@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  REPORTER
+  AUTHOR
+}
+
+enum Status {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  SCHEDULED
+  REJECTED
+  ARCHIVED
+}
+
+enum ArticleType {
+  NEWS
+  BREAKING
+  GROUND_REPORT
+  INVESTIGATION
+  INTERVIEW
+  OPINION
+  EXPLAINER
+  FACT_CHECK
+  VIDEO
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String     @db.VarChar(120)
+  email        String     @unique @db.VarChar(191)
+  passwordHash String     @db.VarChar(255)
+  role         Role       @default(AUTHOR)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  sessions     Session[]
+  author       Author?
+  articles     Article[]
+  media        Media[]
+  audit        AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @db.Char(64)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model Author {
+  id       String    @id @default(cuid())
+  name     String    @db.VarChar(120)
+  slug     String    @unique @db.VarChar(191)
+  bio      String    @db.Text
+  image    String?   @db.VarChar(500)
+  userId   String?   @unique
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  articles Article[]
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        @db.VarChar(120)
+  slug          String        @unique @db.VarChar(191)
+  description   String?       @db.Text
+  articles      Article[]
+  subcategories Subcategory[]
+}
+
+model Subcategory {
+  id         String    @id @default(cuid())
+  name       String    @db.VarChar(120)
+  slug       String    @unique @db.VarChar(191)
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  articles   Article[]
+}
+
+model State {
+  id       String    @id @default(cuid())
+  name     String    @db.VarChar(120)
+  slug     String    @unique @db.VarChar(191)
+  cities   City[]
+  articles Article[]
+}
+
+model City {
+  id       String    @id @default(cuid())
+  name     String    @db.VarChar(120)
+  slug     String    @unique @db.VarChar(191)
+  stateId  String
+  state    State     @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  articles Article[]
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  name     String       @db.VarChar(120)
+  slug     String       @unique @db.VarChar(191)
+  articles ArticleTag[]
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+}
+
+model Article {
+  id            String            @id @default(cuid())
+  title         String            @db.VarChar(250)
+  slug          String            @unique @db.VarChar(191)
+  excerpt       String            @db.Text
+  content       String            @db.LongText
+  featuredImage String?           @db.VarChar(500)
+  imageAlt      String?           @db.VarChar(250)
+  imageCaption  String?           @db.Text
+  categoryId    String
+  category      Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategoryId String?
+  subcategory   Subcategory?      @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  authorId      String
+  author        Author            @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  creatorId     String
+  creator       User              @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  stateId       String?
+  state         State?            @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  cityId        String?
+  city          City?             @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  location      String?           @db.VarChar(191)
+  type          ArticleType       @default(NEWS)
+  status        Status            @default(DRAFT)
+  isFeatured    Boolean           @default(false)
+  isBreaking    Boolean           @default(false)
+  isTrending    Boolean           @default(false)
+  isSponsored   Boolean           @default(false)
+  isDemo        Boolean           @default(false)
+  views         Int               @default(0)
+  publishedAt   DateTime?
+  scheduledAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  version       Int               @default(1)
+  claim         String?           @db.Text
+  verdict       String?           @db.VarChar(100)
+  sources       String?           @db.Text
+  seo           SeoMetadata?
+  video         Video?
+  tags          ArticleTag[]
+  comments      Comment[]
+  revisions     ArticleRevision[]
+
+  @@index([status, publishedAt])
+  @@index([status, scheduledAt])
+  @@index([categoryId, status, publishedAt])
+  @@index([stateId, cityId])
+}
+
+model SeoMetadata {
+  id           String  @id @default(cuid())
+  articleId    String  @unique
+  article      Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  title        String? @db.VarChar(250)
+  description  String? @db.Text
+  focusKeyword String? @db.VarChar(191)
+  canonicalUrl String? @db.VarChar(500)
+  ogImage      String? @db.VarChar(500)
+  schemaType   String  @default("NewsArticle") @db.VarChar(40)
+  robotsIndex  Boolean @default(true)
+  robotsFollow Boolean @default(true)
+}
+
+model Video {
+  id        String  @id @default(cuid())
+  articleId String  @unique
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  url       String  @db.VarChar(500)
+  duration  String? @db.VarChar(20)
+}
+
+model ArticleRevision {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  snapshot  Json
+  editedBy  String   @db.VarChar(191)
+  createdAt DateTime @default(now())
+
+  @@index([articleId, createdAt])
+}
+
+model Media {
+  id         String   @id @default(cuid())
+  url        String   @unique @db.VarChar(500)
+  thumbnail  String   @db.VarChar(500)
+  alt        String   @db.VarChar(250)
+  caption    String?  @db.Text
+  size       Int
+  width      Int
+  height     Int
+  uploaderId String
+  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+}
+
+model BreakingNews {
+  id       String    @id @default(cuid())
+  title    String    @db.VarChar(250)
+  url      String?   @db.VarChar(500)
+  active   Boolean   @default(false)
+  priority Int       @default(0)
+  startsAt DateTime?
+  endsAt   DateTime?
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(191)
+  content   String   @db.Text
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([articleId, approved])
+}
+
+model Advertisement {
+  id       String    @id @default(cuid())
+  name     String    @db.VarChar(120)
+  image    String    @db.VarChar(500)
+  alt      String    @db.VarChar(250)
+  url      String    @db.VarChar(500)
+  position String    @db.VarChar(40)
+  active   Boolean   @default(false)
+  startsAt DateTime?
+  endsAt   DateTime?
+}
+
+model Setting {
+  id    String @id @db.VarChar(191)
+  value String @db.LongText
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique @db.VarChar(191)
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(191)
+  subject   String   @db.VarChar(191)
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  action    String   @db.VarChar(120)
+  target    String   @db.VarChar(191)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model RateLimit {
+  id        String   @id @db.VarChar(191)
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

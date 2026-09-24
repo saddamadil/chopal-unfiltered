@@ -1,0 +1,51 @@
+{
+  "name": "chopal-unfiltered",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "prisma generate && next build --webpack",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node --env-file=.env --import tsx prisma/seed.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "admin:create": "node --env-file=.env --import tsx scripts/create-admin.ts",
+    "jobs": "node --env-file=.env --import tsx scripts/jobs.ts",
+    "test:db": "node --env-file=.env.test --import tsx --test tests/database.integration.ts",
+    "format": "prettier --write app components lib prisma/*.ts scripts tests"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/noto-sans-devanagari": "^5.2.8",
+    "@fontsource/noto-serif-devanagari": "^5.2.8",
+    "@prisma/client": "6.19.2",
+    "@tiptap/extension-link": "^3.0.0",
+    "@tiptap/react": "^3.0.0",
+    "@tiptap/starter-kit": "^3.0.0",
+    "lucide-react": "^0.577.0",
+    "next": "16.3.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sanitize-html": "^2.17.0",
+    "sharp": "^0.35.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/sanitize-html": "^2.16.0",
+    "prettier": "^3.9.8",
+    "prisma": "6.19.2",
+    "tailwindcss": "^4.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
